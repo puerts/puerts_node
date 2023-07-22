@@ -1,0 +1,18 @@
+{
+  "name": "puerts_node",
+  "version": "0.0.1",
+  "license": "BSD 3-Clause 'New' or 'Revised' License",
+  "author": "chexiongsheng <chexiongsheng@gmail.com>",
+  "description": "puerts for Node.js",
+  "main": "./lib/puerts_node.js",
+  "dependencies": {
+    "node-gyp-build": "^4.2.1"
+  },
+  "scripts": {
+    "install": "node-gyp-build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/puerts/puerts_node.git"
+  }
+}
