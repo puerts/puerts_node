@@ -1,0 +1,6 @@
+build
+node-addon-api
+node_modules
+package-lock.json
+test/cpp/build
+test/cpp/build*
