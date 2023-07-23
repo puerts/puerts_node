@@ -296,19 +296,26 @@ NODE_MODULE_INIT(/* exports, module, context */) {
       
     exports->Set(context, v8::String::NewFromUtf8(isolate, "load").ToLocalChecked(), v8::FunctionTemplate::New(isolate, [](const v8::FunctionCallbackInfo<v8::Value>& info) {
         if (!info[0]->IsString()) {
-          ThrowException(info.GetIsolate(), "#0 argument expect a string");
-          return;
+            ThrowException(info.GetIsolate(), "#0 argument expect a string");
+            return;
         }
         std::string path = *(v8::String::Utf8Value(info.GetIsolate(), info[0]));
 
         if (GHandlers.find(path) != GHandlers.end()) {
-          ThrowException(info.GetIsolate(), "loaded!");
-          return;
+            ThrowException(info.GetIsolate(), "loaded!");
+            return;
         }
 
         void* handle = dlopen(path.c_str(), RTLD_LAZY);
+        if (!handle) {
+            std::stringstream ss;
+            ss << "dlopen fail for " << path << ", error: " << dlerror();
+            auto str = ss.str();
+            ThrowException(info.GetIsolate(), str.c_str());
+            return;
+        }
+        
         std::string EntryName = STRINGIFY(PESAPI_MODULE_INITIALIZER(dynamic));
-
         auto Init = (const char* (*)(pesapi_func_ptr*))(uintptr_t)dlsym(handle, EntryName.c_str()); 
 
         if (Init)  {
