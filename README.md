@@ -72,7 +72,6 @@ cd hello_world
 mkdir build
 cd build
 cmake ..
-make
 cmake --build . --config Release
 ```
 
