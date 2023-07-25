@@ -63,6 +63,56 @@ target_compile_definitions (\${PROJECT_NAME} PRIVATE BUILDING_PES_EXTENSION)
 `;
 }
 
+function gen_helloworld_cc(project_name) {
+    return `#include <functional>
+#include <string>
+#include <iostream>
+#include "Binding.hpp"
+
+class HelloWorld
+{
+public:
+    HelloWorld(int p) {
+        Field = p;
+    }
+
+    void Foo(std::function<bool(int, int)> cmp) {
+        bool ret = cmp(Field, StaticField);
+        std::cout << "Foo, Field: " << Field << ", StaticField: " << StaticField << ", compare result:" << ret << std::endl;
+    }
+    
+    static int Bar(std::string str) {
+        std::cout << "Bar, str:" << str << std::endl;
+        return  StaticField + 1;
+    }
+    
+    int Field;
+    
+    static int StaticField;
+};
+
+int HelloWorld::StaticField = 0;
+
+// module declaration begin
+
+UsingCppType(HelloWorld);
+
+void Init() {
+    puerts::DefineClass<HelloWorld>()
+        .Constructor<int>()
+        .Method("Foo", MakeFunction(&HelloWorld::Foo))
+        .Function("Bar", MakeFunction(&HelloWorld::Bar))
+        .Property("Field", MakeProperty(&HelloWorld::Field))
+        .Variable("StaticField", MakeVariable(&HelloWorld::StaticField))
+        .Register();
+}
+
+PESAPI_MODULE(${project_name}, Init)
+
+// module declaration end
+`
+}
+
 program
 	.command('init <project_name>')
     .description('init a puerts addon project')
@@ -70,7 +120,7 @@ program
         fs.mkdirSync(path.join(project_name, 'src'), { recursive: true });
         copyFolderRecursiveSync(path.join(__dirname, '..', 'puerts_libs'), project_name);
         fs.writeFileSync(path.join(project_name, 'CMakeLists.txt'), gen_cmakelist(project_name), {encoding: "utf8", flag: "w"});
-        fs.writeFileSync(path.join(project_name, 'src', 'hello_world.cc'), '// add your lib binding declaration', {encoding: "utf8", flag: "w"});
+        fs.writeFileSync(path.join(project_name, 'src', 'hello_world.cc'), gen_helloworld_cc(project_name), {encoding: "utf8", flag: "w"});
         console.log(`${project_name} inited`);
 	})
 
