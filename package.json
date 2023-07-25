@@ -1,11 +1,12 @@
 {
   "name": "puerts_node",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "license": "BSD 3-Clause 'New' or 'Revised' License",
   "author": "chexiongsheng <chexiongsheng@gmail.com>",
   "description": "puerts for Node.js",
   "main": "./lib/puerts_node.js",
   "typings": "./lib/index.d.ts",
+  "bin": "./bin/puerts_node.js",
   "dependencies": {
     "node-gyp-build": "^4.2.1",
     "commander": "^7.1.0"
