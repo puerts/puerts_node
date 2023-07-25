@@ -115,3 +115,11 @@ obj.Field = 888;
 obj.Foo((x, y) => x > y);
 
 ```
+
+## Features
+
+The following C++ features are supported: constructors, inheritance, member variables, member functions, static functions, static variables, function overloading (constructors/static functions/member functions)
+
+Supports the generation of TypeScript declarations
+
+For more examples, see: https://github.com/puerts/puerts_node/tree/master/test
