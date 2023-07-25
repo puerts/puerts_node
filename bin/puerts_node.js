@@ -49,7 +49,7 @@ set(PUERTS_LIB_ROOT puerts_libs)
 set(PUERTS_INCLUDE \${PUERTS_LIB_ROOT}/include)
 set(PUERTS_SRC \${PUERTS_LIB_ROOT}/src)
 
-file(GLOB SOURCE_FILES "src/hello_world.cc")
+file(GLOB SOURCE_FILES "src/${project_name}.cc")
 
 include_directories(
     \${PUERTS_INCLUDE}
@@ -120,7 +120,7 @@ program
         fs.mkdirSync(path.join(project_name, 'src'), { recursive: true });
         copyFolderRecursiveSync(path.join(__dirname, '..', 'puerts_libs'), project_name);
         fs.writeFileSync(path.join(project_name, 'CMakeLists.txt'), gen_cmakelist(project_name), {encoding: "utf8", flag: "w"});
-        fs.writeFileSync(path.join(project_name, 'src', 'hello_world.cc'), gen_helloworld_cc(project_name), {encoding: "utf8", flag: "w"});
+        fs.writeFileSync(path.join(project_name, 'src', `${project_name}.cc`), gen_helloworld_cc(project_name), {encoding: "utf8", flag: "w"});
         console.log(`${project_name} inited`);
 	})
 

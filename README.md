@@ -59,10 +59,21 @@ void Init() {
 PESAPI_MODULE(hello_world, Init)
 ```
 
-ps: Above C++ example Project can be generate by below command line.
+ps: Above C++ example project can be generate by below command line:
 
 ``` bash
 puerts_node init hello_world
+```
+
+Compile the generated addon project:
+
+``` bash
+cd hello_world
+mkdir build
+cd build
+cmake ..
+make
+cmake --build . --config Release
 ```
 
 ### Calling addon in JavaScript
