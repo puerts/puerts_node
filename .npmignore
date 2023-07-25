@@ -4,3 +4,6 @@ node_modules
 package-lock.json
 test/cpp/build
 test/cpp/build*
+test/*.dll
+test/*.so
+test/*.dylib
