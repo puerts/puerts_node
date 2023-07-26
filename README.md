@@ -1,13 +1,13 @@
-# puerts_node
+# puerts for node
 
 export your c++ API for node
 
 ## Installation
 
-You can install `puerts_node` using `npm`:
+You can install `puerts` using `npm`:
 
 ``` bash
-npm install -g puerts_node
+npm install -g puerts
 ```
 
 ## Example
@@ -62,7 +62,7 @@ PESAPI_MODULE(hello_world, Init)
 ps: Above C++ example project can be generate by below command line:
 
 ``` bash
-puerts_node init hello_world
+puerts init hello_world
 ```
 
 Compile the generated addon project:
@@ -78,9 +78,9 @@ cmake --build . --config Release
 ### Calling addon in JavaScript
 
 ``` javascript
-const puerts_node = require("puerts_node");
+const puerts = require("puerts");
 
-let hello_world = puerts_node('path/to/hello_world');
+let hello_world = puerts.load('path/to/hello_world');
 const HelloWorld = hello_world.HelloWorld;
 
 const obj = new HelloWorld(101);
@@ -98,7 +98,7 @@ obj.Foo((x, y) => x > y);
 ### Generate typescript declaration file (index.d.ts) for a puerts addon
 
 ``` bash
-puerts_node gen_dts path\to\hello_world -t typing
+puerts gen_dts path\to\hello_world -t typing
 ```
 
 Add typing directory to tsconfig.json/compilerOptions/typeRoots.
@@ -106,7 +106,7 @@ Add typing directory to tsconfig.json/compilerOptions/typeRoots.
 ### Calling addon in TypeScript
 
 ``` typescript
-import {load} from "puerts_node";
+import {load} from "puerts";
 import * as HelloWorldModlue from 'hello_world'
 
 let hello_world = load<typeof HelloWorldModlue>('path/to/hello_world');
