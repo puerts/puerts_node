@@ -126,6 +126,45 @@ obj.Foo((x, y) => x > y);
 
 ```
 
+## Function & constructor overloading
+
+``` c++
+class TestClass : public BaseClass
+{
+public:
+	TestClass();
+	
+	TestClass(int32_t InX, int32_t InY);
+
+
+	static void Overload();
+
+	static void Overload(std::string a, int32_t b);
+
+	int32_t OverloadMethod();
+
+	int32_t OverloadMethod(int32_t a);
+};
+``` 
+
+``` c++
+puerts::DefineClass<TestClass>()
+    .Extends<BaseClass>()
+    .Constructor(CombineConstructors(
+        MakeConstructor(TestClass, int32_t, int32_t),
+        MakeConstructor(TestClass)
+        ))
+    .Function("Overload", CombineOverloads(
+        MakeOverload(void(*)(), &TestClass::Overload),
+        MakeOverload(void(*)(std::string, int32_t), &TestClass::Overload)
+        ))
+    .Method("OverloadMethod", CombineOverloads(
+        MakeOverload(int32_t(TestClass::*)(), &TestClass::OverloadMethod),
+        MakeOverload(int32_t(TestClass::*)(int32_t), &TestClass::OverloadMethod)
+        ))
+    .Register();
+```
+
 ## Features
 
 The following C++ features are supported: constructors, inheritance, member variables, member functions, static functions, static variables, function overloading (constructors/static functions/member functions)
