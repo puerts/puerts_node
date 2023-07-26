@@ -1,4 +1,4 @@
-declare module 'puerts_node' {
+declare module 'puerts' {
     interface $Ref<T> {
         __doNoAccess: T
     }

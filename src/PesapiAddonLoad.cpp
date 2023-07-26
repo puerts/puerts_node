@@ -277,7 +277,7 @@ struct DeclarationGenerator
         std::stringstream Output;
         for (const auto & pair : module_to_classes) {
             Output << "declare module \"" << pair.first << "\" {\n";
-            Output << "    import {$Ref, $Nullable, cstring} from \"puerts_node\"\n\n";
+            Output << "    import {$Ref, $Nullable, cstring} from \"puerts\"\n\n";
             for (int i = 0; i < pair.second.size(); i++) {
                 Output << pair.second[i];
             }
