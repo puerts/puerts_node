@@ -59,7 +59,7 @@ include_directories(
 add_library(\${PROJECT_NAME} SHARED \${SOURCE_FILES} \${PUERTS_SRC}/pesapi_adpt.c)
 
 target_compile_definitions (\${PROJECT_NAME} PRIVATE BUILDING_PES_EXTENSION) 
-set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
+set_target_properties(\${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY \${PROJECT_SOURCE_DIR})
 
 `;
 }
