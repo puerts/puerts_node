@@ -2,7 +2,11 @@
 
 #include "pesapi.h"
 
-#if !IL2CPP_TARGET_IOS
+#if IL2CPP_TARGET_IOS
+#define WITHOUT_PESAPI_WRAPPER
+#endif
+
+#if !defined(WITHOUT_PESAPI_WRAPPER)
 
 EXTERN_C_START
 
@@ -448,7 +452,7 @@ void pesapi_class_type_info (const char* proto_magic_id, const void* type_id, co
 #endif
 
 void pesapi_init(pesapi_func_ptr* func_array){
-#if !IL2CPP_TARGET_IOS
+#if !defined(WITHOUT_PESAPI_WRAPPER)
     pesapi_create_null_ptr = (pesapi_create_nullType)func_array[0];
     pesapi_create_undefined_ptr = (pesapi_create_undefinedType)func_array[1];
     pesapi_create_boolean_ptr = (pesapi_create_booleanType)func_array[2];
