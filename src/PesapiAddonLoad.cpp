@@ -307,7 +307,7 @@ NODE_MODULE_INIT(/* exports, module, context */) {
             return;
         }
 
-        void* handle = dlopen(path.c_str(), RTLD_LAZY);
+        void* handle = dlopen(path.c_str(), RTLD_LAZY | RTLD_GLOBAL);
         if (!handle) {
             std::stringstream ss;
             ss << "dlopen fail for " << path << ", error: " << dlerror();

@@ -28,6 +28,9 @@
         'sources': [
             'src/win32-dlfcn.cc'
         ]
+      }, {
+        'cflags': [ '-Wl,-export-dynamic' ],
+        'cflags_cc': [ '-Wl,-export-dynamic' ]
       }]
     ]
   }]
