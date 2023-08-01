@@ -13,8 +13,8 @@
     "defines": [ "MAPPER_ISOLATE_DATA_POS=2"],
     'dependencies': [
     ],
-    'cflags': [ '-fno-exceptions', '-Wno-cast-function-type' ],
-    'cflags_cc': [ '-fno-exceptions', '-Wno-cast-function-type' ],
+    'cflags': [ '-fno-exceptions', '-Wno-cast-function-type', '-O3' ],
+    'cflags_cc': [ '-fno-exceptions', '-Wno-cast-function-type', '-O3' ],
     'xcode_settings': {
       'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
       'CLANG_CXX_LIBRARY': 'libc++',
