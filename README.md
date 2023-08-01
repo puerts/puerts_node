@@ -171,4 +171,4 @@ The following C++ features are supported: constructors, inheritance, member vari
 
 Supports the generation of TypeScript declarations
 
-For more examples, see: https://github.com/puerts/puerts_node/tree/master/test
+For more examples, see: https://github.com/puerts/puerts_addon_demos
