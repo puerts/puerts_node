@@ -16,8 +16,10 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+if ( WIN32 AND NOT CYGWIN )
+    set(CMAKE_CXX_FLAGS_DEBUG "-g")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+endif ( )
 
 execute_process(
     COMMAND node -p "require('puerts').include_dir"
@@ -25,6 +27,7 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
     WORKING_DIRECTORY \${CMAKE_CURRENT_SOURCE_DIR}
 )
+string(REPLACE "\\\\" "/" PUERTS_INCLUDE \${PUERTS_INCLUDE})
 
 execute_process(
     COMMAND node -p "require('puerts').src_dir"
@@ -32,6 +35,7 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
     WORKING_DIRECTORY \${CMAKE_CURRENT_SOURCE_DIR}
 )
+string(REPLACE "\\\\" "/" PUERTS_SRC \${PUERTS_SRC})
 
 file(GLOB SOURCE_FILES "src/${project_name}.cc")
 
