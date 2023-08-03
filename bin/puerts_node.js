@@ -5,39 +5,6 @@ const puerts_node = require('..');
 const fs = require('fs');
 const path = require('path');
 
-function copyFileSync( source, target ) {
-    var targetFile = target;
-
-    if ( fs.existsSync( target ) ) {
-        if ( fs.lstatSync( target ).isDirectory() ) {
-            targetFile = path.join( target, path.basename( source ) );
-        }
-    }
-
-    fs.writeFileSync(targetFile, fs.readFileSync(source));
-}
-
-function copyFolderRecursiveSync( source, target ) {
-    var files = [];
-
-    var targetFolder = path.join( target, path.basename( source ) );
-    if ( !fs.existsSync( targetFolder ) ) {
-        fs.mkdirSync( targetFolder );
-    }
-
-    if ( fs.lstatSync( source ).isDirectory() ) {
-        files = fs.readdirSync( source );
-        files.forEach( function ( file ) {
-            var curSource = path.join( source, file );
-            if ( fs.lstatSync( curSource ).isDirectory() ) {
-                copyFolderRecursiveSync( curSource, targetFolder );
-            } else {
-                copyFileSync( curSource, targetFolder );
-            }
-        } );
-    }
-}
-
 function gen_cmakelist(project_name) {
     return `
 cmake_minimum_required(VERSION 2.8)
@@ -52,9 +19,19 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-set(PUERTS_LIB_ROOT puerts_libs)
-set(PUERTS_INCLUDE \${PUERTS_LIB_ROOT}/include)
-set(PUERTS_SRC \${PUERTS_LIB_ROOT}/src)
+execute_process(
+    COMMAND node -p "require('puerts').include_dir"
+    OUTPUT_VARIABLE PUERTS_INCLUDE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    WORKING_DIRECTORY \${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+execute_process(
+    COMMAND node -p "require('puerts').src_dir"
+    OUTPUT_VARIABLE PUERTS_SRC
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    WORKING_DIRECTORY \${CMAKE_CURRENT_SOURCE_DIR}
+)
 
 file(GLOB SOURCE_FILES "src/${project_name}.cc")
 
@@ -126,7 +103,6 @@ program
     .description('init a puerts addon project')
 	.action(function (project_name) {
         fs.mkdirSync(path.join(project_name, 'src'), { recursive: true });
-        copyFolderRecursiveSync(path.join(__dirname, '..', 'puerts_libs'), project_name);
         fs.writeFileSync(path.join(project_name, 'CMakeLists.txt'), gen_cmakelist(project_name), {encoding: "utf8", flag: "w"});
         fs.writeFileSync(path.join(project_name, 'src', `${project_name}.cc`), gen_helloworld_cc(project_name), {encoding: "utf8", flag: "w"});
         console.log(`${project_name} inited`);
