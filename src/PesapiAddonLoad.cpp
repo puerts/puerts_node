@@ -327,7 +327,17 @@ NODE_MODULE_INIT(/* exports, module, context */) {
             GHandlers[path] = handle;
             info.GetReturnValue().Set(v8::String::NewFromUtf8(info.GetIsolate(), mn, v8::NewStringType::kNormal).ToLocalChecked());
         } else {
-            ThrowException(info.GetIsolate(), "can find entry");
+            std::string VersionEntryName = STRINGIFY(PESAPI_MODULE_VERSION());
+            auto Ver = (int (*)())(uintptr_t)dlsym(handle, VersionEntryName.c_str()); 
+            if (!Ver) {
+                ThrowException(info.GetIsolate(), "can find entry");
+            } else {
+                int pesapi_ver = Ver();
+                std::stringstream ss;
+                ss << "pesapi version mismatch, expect: " << PESAPI_VERSION << ", but got: " << pesapi_ver;
+                auto str = ss.str();
+                ThrowException(info.GetIsolate(), str.c_str());
+            }
             dlclose(handle);
         }
     })->GetFunction(context).ToLocalChecked()).Check();
