@@ -1,6 +1,6 @@
-# puerts for node
+# Puerts Node.js Addon: High-Performance Bridge between C++ and JavaScript
 
-export your c++ API for node
+Welcome to our Node.js addon, powered by [Puerts](https://github.com/Tencent/puerts). This high-performance tool allows you to bind C++ functions and classes to the V8 JavaScript engine, enabling seamless and efficient use of C++ code in your JavaScript environment.
 
 ## Installation
 
