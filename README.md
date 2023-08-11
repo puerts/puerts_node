@@ -172,3 +172,7 @@ The following C++ features are supported: constructors, inheritance, member vari
 Supports the generation of TypeScript declarations
 
 For more examples, see: https://github.com/puerts/puerts_addon_demos
+
+## Performance
+
+If you want to achieve higher performance, please add the PES_EXTENSION_WITH_V8_API macro during compilation. If you want to achieve the highest performance, add an additional WITH_V8_FAST_CALL and include the --turbo-fast-api-calls parameter when starting Node.js. For performance test data, please see [here](https://github.com/puerts/puerts_node_performance).
