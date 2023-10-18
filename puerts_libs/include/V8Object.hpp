@@ -18,14 +18,14 @@
 #include <iostream>
 #endif
 
-namespace puerts
+namespace PUERTS_NAMESPACE
 {
 namespace v8_impl
 {
 static inline void REPORT_EXCEPTION(v8::Isolate* Isolate, v8::TryCatch* TC)
 {
 #ifdef USING_IN_UNREAL_ENGINE
-    UE_LOG(Puerts, Error, TEXT("call function throw: %s"), *puerts::FV8Utils::TryCatchToString(Isolate, TC));
+    UE_LOG(Puerts, Error, TEXT("call function throw: %s"), *FV8Utils::TryCatchToString(Isolate, TC));
 #else
     std::cout << "call function throw: " << *v8::String::Utf8Value(Isolate, TC->Exception()) << std::endl;
 #endif
@@ -99,11 +99,11 @@ public:
         v8::Context::Scope ContextScope(Context);
         auto Object = GObject.Get(Isolate);
 
-        auto MaybeValue = Object->Get(Context, puerts::v8_impl::Converter<const char*>::toScript(Context, key));
+        auto MaybeValue = Object->Get(Context, v8_impl::Converter<const char*>::toScript(Context, key));
         v8::Local<v8::Value> Val;
         if (MaybeValue.ToLocal(&Val))
         {
-            return puerts::v8_impl::Converter<T>::toCpp(Context, Val);
+            return v8_impl::Converter<T>::toCpp(Context, Val);
         }
         return {};
     }
@@ -121,8 +121,8 @@ public:
         v8::Context::Scope ContextScope(Context);
         auto Object = GObject.Get(Isolate);
 
-        auto _UnUsed = Object->Set(Context, puerts::v8_impl::Converter<const char*>::toScript(Context, key),
-            puerts::v8_impl::Converter<T>::toScript(Context, val));
+        auto _UnUsed = Object->Set(
+            Context, v8_impl::Converter<const char*>::toScript(Context, key), v8_impl::Converter<T>::toScript(Context, val));
     }
 
     bool IsValid() const
@@ -137,13 +137,41 @@ public:
         return !Object.IsEmpty() && Object->IsObject();
     }
 
+    // for performance considerations, a native can only hold one JavaScript object at a time (the last setting takes effect if set
+    // multiple times). If there is a need to hold more than one JavaScript object, it is recommended to first hold a JavaScript
+    // array and then add objects to the array.
+    template <typename T>
+    void SetWeakAndOwnBy(const T* Owner)
+    {
+        if (!Owner)
+            return;
+        if (JsEnvLifeCycleTracker.expired() || !Isolate || GContext.IsEmpty() || GObject.IsEmpty())
+            return;
+        v8::Isolate::Scope IsolateScope(Isolate);
+        v8::HandleScope HandleScope(Isolate);
+        auto Context = GContext.Get(Isolate);
+        v8::Context::Scope ContextScope(Context);
+
+        auto Val = DataTransfer::FindOrAddCData(Isolate, Context, StaticTypeId<T>::get(), Owner, true);
+        if (Val->IsObject())
+        {
+            auto JsObject = Val.template As<v8::Object>();
+#if V8_MAJOR_VERSION < 8
+            JsObject->Set(Context, v8::String::NewFromUtf8(Isolate, "_p_i_only_one_child").ToLocalChecked(), GObject.Get(Isolate));
+#else
+            JsObject->Set(Context, v8::String::NewFromUtf8Literal(Isolate, "_p_i_only_one_child"), GObject.Get(Isolate));
+#endif
+            GObject.SetWeak();
+        }
+    }
+
     v8::Isolate* Isolate;
     v8::Global<v8::Context> GContext;
     v8::Global<v8::Object> GObject;
 
     std::weak_ptr<int> JsEnvLifeCycleTracker;
 
-    friend struct puerts::v8_impl::Converter<Object>;
+    friend struct PUERTS_NAMESPACE::v8_impl::Converter<Object>;
 };
 
 class Function : public Object
@@ -206,7 +234,7 @@ public:
 
         if (!MaybeRet.IsEmpty())
         {
-            return puerts::v8_impl::Converter<Ret>::toCpp(Context, MaybeRet.ToLocalChecked());
+            return v8_impl::Converter<Ret>::toCpp(Context, MaybeRet.ToLocalChecked());
         }
         return {};
     }
@@ -227,7 +255,7 @@ private:
     template <typename... Args>
     auto InvokeHelper(v8::Local<v8::Context>& Context, v8::Local<v8::Object>& Object, Args... CppArgs) const
     {
-        v8::Local<v8::Value> Argv[sizeof...(Args)]{puerts::v8_impl::Converter<Args>::toScript(Context, CppArgs)...};
+        v8::Local<v8::Value> Argv[sizeof...(Args)]{v8_impl::Converter<Args>::toScript(Context, CppArgs)...};
         return Object.As<v8::Function>()->Call(Context, v8::Undefined(Isolate), sizeof...(Args), Argv);
     }
 
@@ -236,7 +264,7 @@ private:
         return Object.As<v8::Function>()->Call(Context, v8::Undefined(Isolate), 0, nullptr);
     }
 
-    friend struct puerts::v8_impl::Converter<Function>;
+    friend struct PUERTS_NAMESPACE::v8_impl::Converter<Function>;
 };
 
 }    // namespace v8_impl
@@ -302,4 +330,4 @@ struct Converter<Function>
 #include "StdFunctionConverter.hpp"
 }    // namespace v8_impl
 
-}    // namespace puerts
+}    // namespace PUERTS_NAMESPACE

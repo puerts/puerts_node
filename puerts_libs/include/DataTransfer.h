@@ -20,6 +20,8 @@
 #include "v8.h"
 #pragma warning(pop)
 
+#include "NamespaceDef.h"
+
 #if !defined(MAPPER_ISOLATE_DATA_POS)
 #define MAPPER_ISOLATE_DATA_POS 0
 #endif
@@ -27,7 +29,7 @@
 #define RELEASED_UOBJECT ((UObject*) 12)
 #define RELEASED_UOBJECT_MEMBER ((void*) 12)
 
-namespace puerts
+namespace PUERTS_NAMESPACE
 {
 template <typename T, typename FT, typename = void>
 struct TOuterLinker
@@ -349,4 +351,4 @@ public:
 #endif
     }
 };
-}    // namespace puerts
+}    // namespace PUERTS_NAMESPACE

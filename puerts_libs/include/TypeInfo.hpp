@@ -12,9 +12,10 @@
 #ifdef WITH_V8_FAST_CALL
 #include "V8FastCall.hpp"
 #endif
+#include "PuertsNamespaceDef.h"
 
 #define __DefScriptTTypeName(CLSNAME, CLS)      \
-    namespace puerts                            \
+    namespace PUERTS_NAMESPACE                  \
     {                                           \
     template <>                                 \
     struct ScriptTypeName<CLS>                  \
@@ -28,12 +29,21 @@
 
 #define PUERTS_BINDING_PROTO_ID() "fdq4falqlqcq"
 
-namespace v8
+#if defined(WITH_QJS_NAMESPACE_SUFFIX)
+namespace v8_qjs
 {
 class CFunction;
 }
 
-namespace puerts
+namespace v8 = v8_qjs;
+#else
+namespace v8
+{
+class CFunction;
+}
+#endif
+
+namespace PUERTS_NAMESPACE
 {
 namespace internal
 {
@@ -522,4 +532,4 @@ struct NamedPropertyInfo
     const CTypeInfo* Type;
 };
 
-}    // namespace puerts
+}    // namespace PUERTS_NAMESPACE

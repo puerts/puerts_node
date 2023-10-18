@@ -14,7 +14,7 @@
 #include "TypeInfo.hpp"
 #include <type_traits>
 
-namespace puerts
+namespace PUERTS_NAMESPACE
 {
 template <typename T, typename = void>
 struct ArgumentBufferType
@@ -1131,7 +1131,7 @@ struct PropertyWrapper<API, Ret Ins::*, member, IncPass,
             return;
         }
 
-        if (!API::template Converter<Ret>::accept(context, GetArg(info, 0)))
+        if (!API::template Converter<Ret>::accept(context, API::GetArg(info, 0)))
         {
             API::ThrowException(info, "invalid value for property");
             return;
@@ -1390,4 +1390,4 @@ public:
     }
 };
 
-}    // namespace puerts
+}    // namespace PUERTS_NAMESPACE
