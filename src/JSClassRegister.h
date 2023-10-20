@@ -23,9 +23,12 @@
 #pragma warning(push, 0)
 #include "v8.h"
 #pragma warning(pop)
+
+#include "NamespaceDef.h"
+
 #include "TypeInfo.hpp"
 
-namespace puerts
+namespace PUERTS_NAMESPACE
 {
 class CFunctionInfo;
 struct JSENV_API JSFunctionInfo
@@ -98,13 +101,13 @@ void RegisterAddon(const char* Name, AddonRegisterFunc RegisterFunc);
 JSENV_API const JSClassDefinition* FindClassByType(UStruct* Type);
 #endif
 
-}    // namespace puerts
+}    // namespace PUERTS_NAMESPACE
 
-#define PUERTS_MODULE(Name, RegFunc)                 \
-    static struct FAutoRegisterFor##Name             \
-    {                                                \
-        FAutoRegisterFor##Name()                     \
-        {                                            \
-            puerts::RegisterAddon(#Name, (RegFunc)); \
-        }                                            \
+#define PUERTS_MODULE(Name, RegFunc)                           \
+    static struct FAutoRegisterFor##Name                       \
+    {                                                          \
+        FAutoRegisterFor##Name()                               \
+        {                                                      \
+            PUERTS_NAMESPACE::RegisterAddon(#Name, (RegFunc)); \
+        }                                                      \
     } _AutoRegisterFor##Name

@@ -1,7 +1,7 @@
 const puerts_node = require('..');
 const {$ref, $unref} = puerts_node;
 
-const hello = puerts_node.load("hello");
+const hello = puerts_node.load("cpp/hello");
 
 const TestClass = hello["TestClass"];
 

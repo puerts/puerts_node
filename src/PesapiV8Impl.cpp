@@ -21,9 +21,9 @@
 #include "v8.h"
 #pragma warning(pop)
 
-struct pesapi_env_holder__
+struct pesapi_env_ref__
 {
-    explicit pesapi_env_holder__(v8::Local<v8::Context> context)
+    explicit pesapi_env_ref__(v8::Local<v8::Context> context)
         : isolate(context->GetIsolate()), context_persistent(isolate, context), ref_count(1)
     {
     }
@@ -32,9 +32,9 @@ struct pesapi_env_holder__
     int ref_count;
 };
 
-struct pesapi_value_holder__
+struct pesapi_value_ref__
 {
-    explicit pesapi_value_holder__(v8::Local<v8::Context> context, v8::Local<v8::Value> value)
+    explicit pesapi_value_ref__(v8::Local<v8::Context> context, v8::Local<v8::Value> value)
         : isolate(context->GetIsolate()), value_persistent(isolate, value), ref_count(1)
     {
     }
@@ -323,11 +323,11 @@ bool pesapi_is_array(pesapi_env env, pesapi_value pvalue)
     return value->IsArray();
 }
 
-pesapi_value pesapi_create_native_object(pesapi_env env, const void* class_id, void* object_ptr, bool copy)
+pesapi_value pesapi_native_object_to_value(pesapi_env env, const void* type_id, void* object_ptr, bool call_finalize)
 {
     auto context = v8impl::V8LocalContextFromPesapiEnv(env);
     return v8impl::PesapiValueFromV8LocalValue(
-        ::puerts::DataTransfer::FindOrAddCData(context->GetIsolate(), context, class_id, object_ptr, !copy));
+        ::puerts::DataTransfer::FindOrAddCData(context->GetIsolate(), context, type_id, object_ptr, !call_finalize));
 }
 
 void* pesapi_get_native_object_ptr(pesapi_env env, pesapi_value pvalue)
@@ -348,14 +348,14 @@ const void* pesapi_get_native_object_typeid(pesapi_env env, pesapi_value pvalue)
     return puerts::DataTransfer::GetPointerFast<void>(value.As<v8::Object>(), 1);
 }
 
-bool pesapi_is_native_object(pesapi_env env, const void* class_id, pesapi_value pvalue)
+bool pesapi_is_instance_of(pesapi_env env, const void* type_id, pesapi_value pvalue)
 {
     auto context = v8impl::V8LocalContextFromPesapiEnv(env);
     auto value = v8impl::V8LocalValueFromPesapiValue(pvalue);
-    return ::puerts::DataTransfer::IsInstanceOf(context->GetIsolate(), static_cast<const char*>(class_id), value.As<v8::Object>());
+    return ::puerts::DataTransfer::IsInstanceOf(context->GetIsolate(), static_cast<const char*>(type_id), value.As<v8::Object>());
 }
 
-pesapi_value pesapi_create_ref(pesapi_env env, pesapi_value pvalue)
+pesapi_value pesapi_boxing(pesapi_env env, pesapi_value pvalue)
 {
     auto context = v8impl::V8LocalContextFromPesapiEnv(env);
     auto value = v8impl::V8LocalValueFromPesapiValue(pvalue);
@@ -365,7 +365,7 @@ pesapi_value pesapi_create_ref(pesapi_env env, pesapi_value pvalue)
     return v8impl::PesapiValueFromV8LocalValue(result);
 }
 
-pesapi_value pesapi_get_value_ref(pesapi_env env, pesapi_value pvalue)
+pesapi_value pesapi_unboxing(pesapi_env env, pesapi_value pvalue)
 {
     auto context = v8impl::V8LocalContextFromPesapiEnv(env);
     auto value = v8impl::V8LocalValueFromPesapiValue(pvalue);
@@ -375,10 +375,10 @@ pesapi_value pesapi_get_value_ref(pesapi_env env, pesapi_value pvalue)
     return v8impl::PesapiValueFromV8LocalValue(realvalue);
 }
 
-void pesapi_update_value_ref(pesapi_env env, pesapi_value ref, pesapi_value pvalue)
+void pesapi_update_boxed_value(pesapi_env env, pesapi_value boxed_value, pesapi_value pvalue)
 {
     auto context = v8impl::V8LocalContextFromPesapiEnv(env);
-    auto holder = v8impl::V8LocalValueFromPesapiValue(ref);
+    auto holder = v8impl::V8LocalValueFromPesapiValue(boxed_value);
     auto value = v8impl::V8LocalValueFromPesapiValue(pvalue);
     if (holder->IsObject())
     {
@@ -387,7 +387,7 @@ void pesapi_update_value_ref(pesapi_env env, pesapi_value ref, pesapi_value pval
     }
 }
 
-bool pesapi_is_ref(pesapi_env env, pesapi_value value)
+bool pesapi_is_boxed_value(pesapi_env env, pesapi_value value)
 {
     return pesapi_is_object(env, value);
 }
@@ -453,36 +453,36 @@ void pesapi_throw_by_string(pesapi_callback_info pinfo, const char* msg)
         v8::Exception::Error(v8::String::NewFromUtf8(isolate, msg, v8::NewStringType::kNormal).ToLocalChecked()));
 }
 
-pesapi_env_holder pesapi_hold_env(pesapi_env env)
+pesapi_env_ref pesapi_create_env_ref(pesapi_env env)
 {
     auto context = v8impl::V8LocalContextFromPesapiEnv(env);
-    return new pesapi_env_holder__(context);
+    return new pesapi_env_ref__(context);
 }
 
-pesapi_env pesapi_get_env_from_holder(pesapi_env_holder env_holder)
+pesapi_env pesapi_get_env_from_ref(pesapi_env_ref env_ref)
 {
-    return v8impl::PesapiEnvFromV8LocalContext(env_holder->context_persistent.Get(env_holder->isolate));
+    return v8impl::PesapiEnvFromV8LocalContext(env_ref->context_persistent.Get(env_ref->isolate));
 }
 
-pesapi_env_holder pesapi_duplicate_env_holder(pesapi_env_holder env_holder)
+pesapi_env_ref pesapi_duplicate_env_ref(pesapi_env_ref env_ref)
 {
-    ++env_holder->ref_count;
-    return env_holder;
+    ++env_ref->ref_count;
+    return env_ref;
 }
 
-void pesapi_release_env_holder(pesapi_env_holder env_holder)
+void pesapi_release_env_ref(pesapi_env_ref env_ref)
 {
-    if (--env_holder->ref_count == 0)
+    if (--env_ref->ref_count == 0)
     {
-        delete env_holder;
+        delete env_ref;
     }
 }
 
-pesapi_scope pesapi_open_scope(pesapi_env_holder env_holder)
+pesapi_scope pesapi_open_scope(pesapi_env_ref env_ref)
 {
-    env_holder->isolate->Enter();
-    auto scope = new pesapi_scope__(env_holder->isolate);
-    env_holder->context_persistent.Get(env_holder->isolate)->Enter();
+    env_ref->isolate->Enter();
+    auto scope = new pesapi_scope__(env_ref->isolate);
+    env_ref->context_persistent.Get(env_ref->isolate)->Enter();
     return scope;
 }
 
@@ -528,30 +528,55 @@ void pesapi_close_scope(pesapi_scope scope)
     isolate->Exit();
 }
 
-pesapi_value_holder pesapi_hold_value(pesapi_env env, pesapi_value pvalue)
+pesapi_value_ref pesapi_create_value_ref(pesapi_env env, pesapi_value pvalue)
 {
     auto context = v8impl::V8LocalContextFromPesapiEnv(env);
     auto value = v8impl::V8LocalValueFromPesapiValue(pvalue);
-    return new pesapi_value_holder__(context, value);
+    return new pesapi_value_ref__(context, value);
 }
 
-pesapi_value_holder pesapi_duplicate_value_holder(pesapi_value_holder value_holder)
+pesapi_value_ref pesapi_duplicate_value_ref(pesapi_value_ref value_ref)
 {
-    ++value_holder->ref_count;
-    return value_holder;
+    ++value_ref->ref_count;
+    return value_ref;
 }
 
-void pesapi_release_value_holder(pesapi_value_holder value_holder)
+void pesapi_release_value_ref(pesapi_value_ref value_ref)
 {
-    if (--value_holder->ref_count == 0)
+    if (--value_ref->ref_count == 0)
     {
-        delete value_holder;
+        delete value_ref;
     }
 }
 
-pesapi_value pesapi_get_value_from_holder(pesapi_env env, pesapi_value_holder value_holder)
+pesapi_value pesapi_get_value_from_ref(pesapi_env env, pesapi_value_ref value_ref)
 {
-    return v8impl::PesapiValueFromV8LocalValue(value_holder->value_persistent.Get(value_holder->isolate));
+    return v8impl::PesapiValueFromV8LocalValue(value_ref->value_persistent.Get(value_ref->isolate));
+}
+
+void pesapi_set_ref_weak(pesapi_env env, pesapi_value_ref value_ref)
+{
+    auto context = v8impl::V8LocalContextFromPesapiEnv(env);
+    value_ref->value_persistent.SetWeak();
+}
+
+bool pesapi_set_owner(pesapi_env env, pesapi_value pvalue, pesapi_value powner)
+{
+    auto context = v8impl::V8LocalContextFromPesapiEnv(env);
+    auto value = v8impl::V8LocalValueFromPesapiValue(pvalue);
+    auto owner = v8impl::V8LocalValueFromPesapiValue(powner);
+
+    if (owner->IsObject())
+    {
+        auto jsObj = owner.template As<v8::Object>();
+#if V8_MAJOR_VERSION < 8
+        jsObj->Set(context, v8::String::NewFromUtf8(context->GetIsolate(), "_p_i_only_one_child").ToLocalChecked(), value).Check();
+#else
+        jsObj->Set(context, v8::String::NewFromUtf8Literal(context->GetIsolate(), "_p_i_only_one_child"), value).Check();
+#endif
+        return true;
+    }
+    return false;
 }
 
 pesapi_value pesapi_get_property(pesapi_env env, pesapi_value pobject, const char* key)
