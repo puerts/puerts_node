@@ -9,7 +9,7 @@ UsingCppType(BaseClass);
 UsingCppType(TestClass);
 UsingCppType(AdvanceTestClass);
 
-void Init() {
+static void Init() {
     puerts::DefineClass<NoDeleteClass>()
         .Constructor()
         .Register();
