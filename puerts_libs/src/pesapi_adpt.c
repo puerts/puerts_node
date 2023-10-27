@@ -478,6 +478,12 @@ void pesapi_class_type_info (const char* proto_magic_id, const void* type_id, co
     pesapi_class_type_info_ptr(proto_magic_id, type_id, constructor_info, methods_info, functions_info, properties_info, variables_info);
 }
 
+typedef const void* (*pesapi_find_type_idType)(const char* module_name, const char* type_name);
+static pesapi_find_type_idType pesapi_find_type_id_ptr;
+const void* pesapi_find_type_id (const char* module_name, const char* type_name) {
+    return pesapi_find_type_id_ptr(module_name, type_name);
+}
+
 
 #endif
 
@@ -561,6 +567,7 @@ void pesapi_init(pesapi_func_ptr* func_array){
     pesapi_set_property_info_ptr = (pesapi_set_property_infoType)func_array[75];
     pesapi_define_class_ptr = (pesapi_define_classType)func_array[76];
     pesapi_class_type_info_ptr = (pesapi_class_type_infoType)func_array[77];
+    pesapi_find_type_id_ptr = (pesapi_find_type_idType)func_array[78];
 
 #endif
 }
