@@ -9,6 +9,7 @@
       'src/PesapiV8Impl.cpp'
     ],
     'include_dirs': [
+      'puerts_libs/include'
     ],
     "defines": [ "MAPPER_ISOLATE_DATA_POS=2"],
     'dependencies': [
