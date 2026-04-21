@@ -37,34 +37,34 @@
 #define MakeVariable(M) MakeProperty(M)
 #define MakeReadonlyVariable(M) MakeReadonlyProperty(M)
 #define MakeFunction(M, ...)                                                                                                    \
-    [](::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                                                     \
+    [](struct pesapi_ffi* apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                            \
     {                                                                                                                           \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, decltype(M), M>::callWithDefaultValues( \
-            info, ##__VA_ARGS__);                                                                                               \
+            apis, info, ##__VA_ARGS__);                                                                                         \
     },                                                                                                                          \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, decltype(M), M>::info(                  \
             PUERTS_NAMESPACE::Count(__VA_ARGS__))
 #define MakeExtension(M, ...)                                                                                           \
-    [](::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                                             \
+    [](struct pesapi_ffi* apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                    \
     {                                                                                                                   \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, decltype(M),                    \
-            M>::callExtensionWithDefaultValues(info, ##__VA_ARGS__);                                                    \
+            M>::callExtensionWithDefaultValues(apis, info, ##__VA_ARGS__);                                              \
     },                                                                                                                  \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, decltype(M), M>::extensionInfo( \
             PUERTS_NAMESPACE::Count(__VA_ARGS__))
 #define SelectFunction(SIGNATURE, M, ...)                                                                                     \
-    [](::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                                                   \
+    [](struct pesapi_ffi* apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                          \
     {                                                                                                                         \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, SIGNATURE, M>::callWithDefaultValues( \
-            info, ##__VA_ARGS__);                                                                                             \
+            apis, info, ##__VA_ARGS__);                                                                                       \
     },                                                                                                                        \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, SIGNATURE, M>::info(                  \
             PUERTS_NAMESPACE::Count(__VA_ARGS__))
 #define SelectFunction_PtrRet(SIGNATURE, M, ...)                                                                   \
-    [](::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                                        \
+    [](struct pesapi_ffi* apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)               \
     {                                                                                                              \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, SIGNATURE, M,              \
-            true>::callWithDefaultValues(info, ##__VA_ARGS__);                                                     \
+            true>::callWithDefaultValues(apis, info, ##__VA_ARGS__);                                               \
     },                                                                                                             \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, SIGNATURE, M, true>::info( \
             PUERTS_NAMESPACE::Count(__VA_ARGS__))
@@ -87,18 +87,18 @@
     {                            \
     };
 
-#define DeclOverload(Name, SIGNATURE, M, ...)                                                                                   \
-    template <>                                                                                                                 \
-    struct Name##PuertsOverloads<SIGNATURE>                                                                                     \
-    {                                                                                                                           \
-        static bool overloadCall(::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                           \
-        {                                                                                                                       \
-            return ::PUERTS_NAMESPACE::FuncCallWrapper<SIGNATURE, M, true>::overloadCallWithDefaultValues(info, ##__VA_ARGS__); \
-        }                                                                                                                       \
-        static const ::PUERTS_NAMESPACE::CFunctionInfo* info()                                                                  \
-        {                                                                                                                       \
-            return ::PUERTS_NAMESPACE::FuncCallWrapper<SIGNATURE, M>::info(PUERTS_NAMESPACE::Count(__VA_ARGS__));               \
-        }                                                                                                                       \
+#define DeclOverload(Name, SIGNATURE, M, ...)                                                                                         \
+    template <>                                                                                                                       \
+    struct Name##PuertsOverloads<SIGNATURE>                                                                                           \
+    {                                                                                                                                 \
+        static bool overloadCall(struct pesapi_ffi* apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)        \
+        {                                                                                                                             \
+            return ::PUERTS_NAMESPACE::FuncCallWrapper<SIGNATURE, M, true>::overloadCallWithDefaultValues(apis, info, ##__VA_ARGS__); \
+        }                                                                                                                             \
+        static const ::PUERTS_NAMESPACE::CFunctionInfo* info()                                                                        \
+        {                                                                                                                             \
+            return ::PUERTS_NAMESPACE::FuncCallWrapper<SIGNATURE, M>::info(PUERTS_NAMESPACE::Count(__VA_ARGS__));                     \
+        }                                                                                                                             \
     };
 
 #define SelectOverload(Name, SIGNATURE) Name##PuertsOverloads<SIGNATURE>

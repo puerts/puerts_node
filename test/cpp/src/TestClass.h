@@ -2,6 +2,7 @@
 
 #include <string>
 #include <cstdio>
+#include <cstdint>
 
 class BaseClass
 {

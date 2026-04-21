@@ -25,34 +25,44 @@
     };                                                \
     }
 
-#define __DefCDataPointerConverter_pesapi_impl(CLS)                                                  \
-    namespace PUERTS_NAMESPACE                                                                       \
-    {                                                                                                \
-    namespace pesapi_impl                                                                            \
-    {                                                                                                \
-    template <>                                                                                      \
-    struct Converter<CLS*>                                                                           \
-    {                                                                                                \
-        static pesapi_value toScript(pesapi_env env, CLS* value)                                     \
-        {                                                                                            \
-            return pesapi_native_object_to_value(env, DynamicTypeId<CLS>::get(value), value, false); \
-        }                                                                                            \
-        static CLS* toCpp(pesapi_env env, pesapi_value value)                                        \
-        {                                                                                            \
-            return static_cast<CLS*>(pesapi_get_native_object_ptr(env, value));                      \
-        }                                                                                            \
-        static bool accept(pesapi_env env, pesapi_value value)                                       \
-        {                                                                                            \
-            return pesapi_is_instance_of(env, StaticTypeId<CLS>::get(), value);                      \
-        }                                                                                            \
-    };                                                                                               \
-    }                                                                                                \
+#define __DefCDataPointerConverter_pesapi_impl(CLS)                                                                   \
+    namespace PUERTS_NAMESPACE                                                                                        \
+    {                                                                                                                 \
+    namespace pesapi_impl                                                                                             \
+    {                                                                                                                 \
+    template <>                                                                                                       \
+    struct Converter<CLS*>                                                                                            \
+    {                                                                                                                 \
+        static pesapi_value toScript(PApiCallbackEnv env, CLS* value)                                                 \
+        {                                                                                                             \
+            return env.apis->native_object_to_value(env.env, DynamicTypeId<CLS>::get(value), value, false);           \
+        }                                                                                                             \
+        static CLS* toCpp(PApiCallbackEnv env, pesapi_value value)                                                    \
+        {                                                                                                             \
+            return static_cast<CLS*>(env.apis->get_native_object_ptr(env.env, value));                                \
+        }                                                                                                             \
+        static bool accept(PApiCallbackEnv env, pesapi_value value)                                                   \
+        {                                                                                                             \
+            return env.apis->is_instance_of(env.env, StaticTypeId<CLS>::get(), value);                                \
+        }                                                                                                             \
+    };                                                                                                                \
+    }                                                                                                                 \
     }
 
 namespace PUERTS_NAMESPACE
 {
 namespace pesapi_impl
 {
+
+// Lightweight call context: bundles the pesapi_ffi* (function table) with the pesapi_env.
+// It is passed by value into all Converter/StringHolder calls so that every value-API
+// invocation can route through the function-pointer table provided by the hosting engine.
+struct PApiCallbackEnv
+{
+    struct pesapi_ffi* apis;
+    pesapi_env env;
+};
+
 template <typename T, typename Enable = void>
 struct Converter;
 
@@ -65,10 +75,10 @@ struct CustomArgumentBufferType
 struct API
 {
     typedef pesapi_callback_info CallbackInfoType;
-    typedef pesapi_env ContextType;
+    typedef PApiCallbackEnv ContextType;
     typedef pesapi_value ValueType;
-    typedef void (*FunctionCallbackType)(pesapi_callback_info info);
-    typedef void* (*InitializeFuncType)(pesapi_callback_info Info);
+    typedef void (*FunctionCallbackType)(struct pesapi_ffi* apis, pesapi_callback_info info);
+    typedef void* (*InitializeFuncType)(struct pesapi_ffi* apis, pesapi_callback_info Info);
     struct GeneralFunctionInfo
     {
         const char* Name;
@@ -88,77 +98,96 @@ struct API
     typedef NamedFunctionInfo GeneralFunctionReflectionInfo;
     typedef NamedPropertyInfo GeneralPropertyReflectionInfo;
 
-    inline static int GetArgsLen(pesapi_callback_info info)
+    inline static int GetArgsLen(PApiCallbackEnv env, pesapi_callback_info info)
     {
-        return pesapi_get_args_len(info);
+        return env.apis->get_args_len(info);
     }
 
-    inline static pesapi_value GetArg(pesapi_callback_info info, int index)
+    inline static pesapi_value GetArg(PApiCallbackEnv env, pesapi_callback_info info, int index)
     {
-        return pesapi_get_arg(info, index);
+        return env.apis->get_arg(info, index);
     }
 
-    inline static pesapi_env GetContext(pesapi_callback_info info)
+    inline static PApiCallbackEnv GetContext(struct pesapi_ffi* apis, pesapi_callback_info info)
     {
-        return pesapi_get_env(info);
-    }
-    inline static pesapi_value GetThis(pesapi_callback_info info)
-    {
-        return pesapi_get_this(info);
+        return PApiCallbackEnv{apis, apis->get_env(info)};
     }
 
-    inline static pesapi_value GetHolder(pesapi_callback_info info)
+    // In the new pesapi ABI the previous pesapi_value-based "this"/"holder" has been replaced
+    // by a native-pointer accessor. GetThis/GetHolder therefore return the already-extracted
+    // native self pointer directly, and StaticCall.hpp uses SelfFromHolder to obtain the typed
+    // self pointer without going through Converter::toCpp.
+    inline static void* GetHolder(PApiCallbackEnv env, pesapi_callback_info info)
     {
-        return pesapi_get_holder(info);
+        return env.apis->get_native_holder_ptr(info);
+    }
+
+    inline static void* GetThis(PApiCallbackEnv env, pesapi_callback_info info)
+    {
+        return env.apis->get_native_holder_ptr(info);
+    }
+
+    // Direct self-pointer accessor used by StaticCall.hpp to replace the old pattern
+    // Converter<Ins*>::toCpp(context, GetThis/GetHolder(info)). Returns the native object
+    // pointer (typed T*) associated with "this" of the current callback.
+    template <typename T>
+    inline static T* GetSelf(PApiCallbackEnv env, pesapi_callback_info info)
+    {
+        return static_cast<T*>(env.apis->get_native_holder_ptr(info));
     }
 
     // use where GetSelfFromData is true
-    inline static void* GetFunctionData(pesapi_callback_info info)
+    inline static void* GetFunctionData(PApiCallbackEnv env, pesapi_callback_info info)
     {
-        return pesapi_get_userdata(info);
+        return env.apis->get_userdata(info);
     }
 
-    inline static void ThrowException(pesapi_callback_info info, const char* msg)
+    inline static void ThrowException(PApiCallbackEnv env, pesapi_callback_info info, const char* msg)
     {
-        pesapi_throw_by_string(info, msg);
+        env.apis->throw_by_string(info, msg);
     }
 
-    inline static void SetReturn(pesapi_callback_info info, pesapi_value value)
+    inline static void SetReturn(PApiCallbackEnv env, pesapi_callback_info info, pesapi_value value)
     {
-        pesapi_add_return(info, value);
+        env.apis->add_return(info, value);
     }
 
     template <typename T1, typename T2>
-    inline static void LinkOuter(pesapi_env env, pesapi_value outer, pesapi_value inner)
+    inline static void LinkOuter(PApiCallbackEnv env, pesapi_callback_info info, pesapi_value inner)
     {
-        pesapi_set_property_uint32(env, inner, 0, outer);
+        auto outer_ptr = env.apis->get_native_holder_ptr(info);
+        auto outer_type_id = env.apis->get_native_holder_typeid(info);
+        if (!outer_ptr || !outer_type_id)
+            return;
+        auto outer_value = env.apis->native_object_to_value(env.env, outer_type_id, outer_ptr, false);
+        env.apis->set_property_uint32(env.env, inner, 0, outer_value);
     }
 
-    inline static void UpdateRefValue(pesapi_env env, pesapi_value holder, pesapi_value value)
+    inline static void UpdateRefValue(PApiCallbackEnv env, pesapi_value holder, pesapi_value value)
     {
-        if (pesapi_is_object(env, holder))
+        if (env.apis->is_object(env.env, holder))
         {
-            pesapi_update_boxed_value(env, holder, value);
+            env.apis->update_boxed_value(env.env, holder, value);
         }
     }
 
     template <typename T>
-    inline static T* FastGetNativeObjectPointer(pesapi_env env, pesapi_value value)
+    inline static T* FastGetNativeObjectPointer(PApiCallbackEnv env, pesapi_value value)
     {
-        return static_cast<T*>(pesapi_get_native_object_ptr(env, value));
+        return static_cast<T*>(env.apis->get_native_object_ptr(env.env, value));
     }
 
-    inline static pesapi_value GetUndefined(pesapi_env env)
+    inline static pesapi_value GetUndefined(PApiCallbackEnv env)
     {
-        return pesapi_create_undefined(env);
+        return env.apis->create_undefined(env.env);
     }
 
-    inline static bool IsNullOrUndefined(pesapi_env env, pesapi_value val)
+    inline static bool IsNullOrUndefined(PApiCallbackEnv env, pesapi_value val)
     {
-        return pesapi_is_null(env, val) || pesapi_is_undefined(env, val);
+        return env.apis->is_null(env.env, val) || env.apis->is_undefined(env.env, val);
     }
 
-    typedef void (*FinalizeFuncType)(void* Ptr);
+    typedef pesapi_finalize FinalizeFuncType;
 
     template <typename T, typename CDB>
     static void Register(FinalizeFuncType Finalize, const CDB& Cdb)
@@ -169,30 +198,30 @@ struct API
         for (const auto& func : Cdb.functions_)
         {
             pesapi_set_method_info(
-                properties, pos++, func.Name, true, reinterpret_cast<FunctionCallbackType>(func.Callback), nullptr, nullptr);
+                properties, pos++, func.Name, true, reinterpret_cast<pesapi_callback>(func.Callback), nullptr, nullptr);
         }
 
         for (const auto& method : Cdb.methods_)
         {
             pesapi_set_method_info(
-                properties, pos++, method.Name, false, reinterpret_cast<FunctionCallbackType>(method.Callback), nullptr, nullptr);
+                properties, pos++, method.Name, false, reinterpret_cast<pesapi_callback>(method.Callback), nullptr, nullptr);
         }
 
         for (const auto& prop : Cdb.properties_)
         {
-            pesapi_set_property_info(properties, pos++, prop.Name, false, reinterpret_cast<FunctionCallbackType>(prop.Getter),
-                reinterpret_cast<FunctionCallbackType>(prop.Setter), nullptr, nullptr);
+            pesapi_set_property_info(properties, pos++, prop.Name, false, reinterpret_cast<pesapi_callback>(prop.Getter),
+                reinterpret_cast<pesapi_callback>(prop.Setter), nullptr, nullptr, nullptr);
         }
 
         for (const auto& prop : Cdb.variables_)
         {
-            pesapi_set_property_info(properties, pos++, prop.Name, true, reinterpret_cast<FunctionCallbackType>(prop.Getter),
-                reinterpret_cast<FunctionCallbackType>(prop.Setter), nullptr, nullptr);
+            pesapi_set_property_info(properties, pos++, prop.Name, true, reinterpret_cast<pesapi_callback>(prop.Getter),
+                reinterpret_cast<pesapi_callback>(prop.Setter), nullptr, nullptr, nullptr);
         }
 
         pesapi_finalize finalize = Finalize;
         pesapi_define_class(StaticTypeId<T>::get(), Cdb.superTypeId_, Cdb.className_,
-            reinterpret_cast<InitializeFuncType>(Cdb.constructor_), finalize, properties_count, properties, nullptr);
+            reinterpret_cast<pesapi_constructor>(Cdb.constructor_), finalize, properties_count, properties, nullptr);
 
         static std::vector<NamedFunctionInfo> s_constructorInfos_{};
         static std::vector<NamedFunctionInfo> s_methodInfos_{};
@@ -229,25 +258,25 @@ struct API
 class StringHolder
 {
 public:
-    StringHolder(pesapi_env env, pesapi_value value)
+    StringHolder(PApiCallbackEnv env, pesapi_value value)
     {
         if (!value)
             return;
-        if (pesapi_is_binary(env, value))
+        if (env.apis->is_binary(env.env, value))
         {
             needFree_ = false;
             size_t length = 0;
-            str_ = (char*) pesapi_get_value_binary(env, value, &length);
+            str_ = (char*) env.apis->get_value_binary(env.env, value, &length);
         }
         else
         {
             size_t length = 0;
-            str_ = (char*) pesapi_get_value_string_utf8(env, value, nullptr, &length);
+            str_ = (char*) env.apis->get_value_string_utf8(env.env, value, nullptr, &length);
             needFree_ = false;
             if (!str_)
             {
                 str_ = new char[length + 1];
-                pesapi_get_value_string_utf8(env, value, str_, &length);
+                env.apis->get_value_string_utf8(env.env, value, str_, &length);
                 needFree_ = true;
             }
         }
@@ -286,129 +315,129 @@ struct CustomArgumentBufferType<const char*>
 template <typename T>
 struct Converter<T, typename std::enable_if<std::is_integral<T>::value && sizeof(T) == 8 && std::is_signed<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, T value)
+    static pesapi_value toScript(PApiCallbackEnv env, T value)
     {
-        return pesapi_create_int64(env, value);
+        return env.apis->create_int64(env.env, value);
     }
 
-    static T toCpp(pesapi_env env, pesapi_value value)
+    static T toCpp(PApiCallbackEnv env, pesapi_value value)
     {
-        return static_cast<T>(pesapi_get_value_int64(env, value));
+        return static_cast<T>(env.apis->get_value_int64(env.env, value));
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_int64(env, value);
+        return env.apis->is_int64(env.env, value);
     }
 };
 
 template <typename T>
 struct Converter<T, typename std::enable_if<std::is_integral<T>::value && sizeof(T) == 8 && !std::is_signed<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, T value)
+    static pesapi_value toScript(PApiCallbackEnv env, T value)
     {
-        return pesapi_create_uint64(env, value);
+        return env.apis->create_uint64(env.env, value);
     }
 
-    static T toCpp(pesapi_env env, pesapi_value value)
+    static T toCpp(PApiCallbackEnv env, pesapi_value value)
     {
-        return static_cast<T>(pesapi_get_value_uint64(env, value));
+        return static_cast<T>(env.apis->get_value_uint64(env.env, value));
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_uint64(env, value);
+        return env.apis->is_uint64(env.env, value);
     }
 };
 
 template <typename T>
 struct Converter<T, typename std::enable_if<std::is_integral<T>::value && sizeof(T) < 8 && std::is_signed<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, T value)
+    static pesapi_value toScript(PApiCallbackEnv env, T value)
     {
-        return pesapi_create_int32(env, value);
+        return env.apis->create_int32(env.env, value);
     }
 
-    static T toCpp(pesapi_env env, pesapi_value value)
+    static T toCpp(PApiCallbackEnv env, pesapi_value value)
     {
-        return static_cast<T>(pesapi_get_value_int32(env, value));
+        return static_cast<T>(env.apis->get_value_int32(env.env, value));
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_int32(env, value);
+        return env.apis->is_int32(env.env, value);
     }
 };
 
 template <typename T>
 struct Converter<T, typename std::enable_if<std::is_integral<T>::value && sizeof(T) < 8 && !std::is_signed<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, T value)
+    static pesapi_value toScript(PApiCallbackEnv env, T value)
     {
-        return pesapi_create_uint32(env, value);
+        return env.apis->create_uint32(env.env, value);
     }
 
-    static T toCpp(pesapi_env env, pesapi_value value)
+    static T toCpp(PApiCallbackEnv env, pesapi_value value)
     {
-        return static_cast<T>(pesapi_get_value_uint32(env, value));
+        return static_cast<T>(env.apis->get_value_uint32(env.env, value));
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_uint32(env, value);
+        return env.apis->is_uint32(env.env, value);
     }
 };
 
 template <typename T>
 struct Converter<T, typename std::enable_if<std::is_enum<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, T value)
+    static pesapi_value toScript(PApiCallbackEnv env, T value)
     {
-        return pesapi_create_int32(env, static_cast<int>(value));
+        return env.apis->create_int32(env.env, static_cast<int>(value));
     }
 
-    static T toCpp(pesapi_env env, pesapi_value value)
+    static T toCpp(PApiCallbackEnv env, pesapi_value value)
     {
-        return static_cast<T>(pesapi_get_value_int32(env, value));
+        return static_cast<T>(env.apis->get_value_int32(env.env, value));
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_int32(env, value);
+        return env.apis->is_int32(env.env, value);
     }
 };
 
 template <typename T>
 struct Converter<T, typename std::enable_if<std::is_floating_point<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, T value)
+    static pesapi_value toScript(PApiCallbackEnv env, T value)
     {
-        return pesapi_create_double(env, value);
+        return env.apis->create_double(env.env, value);
     }
 
-    static T toCpp(pesapi_env env, pesapi_value value)
+    static T toCpp(PApiCallbackEnv env, pesapi_value value)
     {
-        return static_cast<T>(pesapi_get_value_double(env, value));
+        return static_cast<T>(env.apis->get_value_double(env.env, value));
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_double(env, value);
+        return env.apis->is_double(env.env, value);
     }
 };
 
 template <>
 struct Converter<std::string>
 {
-    static pesapi_value toScript(pesapi_env env, std::string value)
+    static pesapi_value toScript(PApiCallbackEnv env, std::string value)
     {
-        return pesapi_create_string_utf8(env, value.c_str(), value.size());
+        return env.apis->create_string_utf8(env.env, value.c_str(), value.size());
     }
 
-    static std::string toCpp(pesapi_env env, pesapi_value value)
+    static std::string toCpp(PApiCallbackEnv env, pesapi_value value)
     {
         size_t bufSize = 0;
-        const char* str = pesapi_get_value_string_utf8(env, value, nullptr, &bufSize);
+        const char* str = env.apis->get_value_string_utf8(env.env, value, nullptr, &bufSize);
         if (str)
         {
             return std::string(str);
@@ -416,109 +445,109 @@ struct Converter<std::string>
         else
         {
             std::vector<char> buffer(bufSize + 1);
-            str = pesapi_get_value_string_utf8(env, value, buffer.data(), &bufSize);
+            str = env.apis->get_value_string_utf8(env.env, value, buffer.data(), &bufSize);
             return std::string(str);
         }
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_string(env, value);
+        return env.apis->is_string(env.env, value);
     }
 };
 
 template <>
 struct Converter<const char*>
 {
-    static pesapi_value toScript(pesapi_env env, const char* value)
+    static pesapi_value toScript(PApiCallbackEnv env, const char* value)
     {
-        return pesapi_create_string_utf8(env, value, strlen(value));
+        return env.apis->create_string_utf8(env.env, value, strlen(value));
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_string(env, value);
+        return env.apis->is_string(env.env, value);
     }
 };
 
 template <>
 struct Converter<void*>
 {
-    static pesapi_value toScript(pesapi_env env, void* value)
+    static pesapi_value toScript(PApiCallbackEnv env, void* value)
     {
-        return pesapi_create_binary(env, value, 0);
+        return env.apis->create_binary(env.env, value, 0);
     }
 
-    static void* toCpp(pesapi_env env, pesapi_value value)
+    static void* toCpp(PApiCallbackEnv env, pesapi_value value)
     {
         size_t bufsize;
-        return pesapi_get_value_binary(env, value, &bufsize);
+        return env.apis->get_value_binary(env.env, value, &bufsize);
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_binary(env, value);
+        return env.apis->is_binary(env.env, value);
     }
 };
 
 template <>
 struct Converter<bool>
 {
-    static pesapi_value toScript(pesapi_env env, bool value)
+    static pesapi_value toScript(PApiCallbackEnv env, bool value)
     {
-        return pesapi_create_boolean(env, value);
+        return env.apis->create_boolean(env.env, value);
     }
 
-    static bool toCpp(pesapi_env env, pesapi_value value)
+    static bool toCpp(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_get_value_bool(env, value);
+        return env.apis->get_value_bool(env.env, value);
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_boolean(env, value);
+        return env.apis->is_boolean(env.env, value);
     }
 };
 
 template <typename T>
 struct Converter<std::reference_wrapper<T>, typename std::enable_if<!is_objecttype<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, const T& value)
+    static pesapi_value toScript(PApiCallbackEnv env, const T& value)
     {
-        return pesapi_boxing(env, Converter<T>::toScript(env, value));
+        return env.apis->boxing(env.env, Converter<T>::toScript(env, value));
     }
 
-    static T toCpp(pesapi_env env, pesapi_value value)
+    static T toCpp(PApiCallbackEnv env, pesapi_value value)
     {
-        return Converter<T>::toCpp(env, pesapi_unboxing(env, value));
+        return Converter<T>::toCpp(env, env.apis->unboxing(env.env, value));
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_boxed_value(env, value);    // do not checked inner
+        return env.apis->is_boxed_value(env.env, value);    // do not checked inner
     }
 };
 
 template <typename T>
 struct Converter<std::reference_wrapper<T>, typename std::enable_if<is_objecttype<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, const T& value)
+    static pesapi_value toScript(PApiCallbackEnv env, const T& value)
     {
-        return pesapi_boxing(env, Converter<T>::toScript(env, value));
+        return env.apis->boxing(env.env, Converter<T>::toScript(env, value));
     }
 
-    static T* toCpp(pesapi_env env, pesapi_value value)
+    static T* toCpp(PApiCallbackEnv env, pesapi_value value)
     {
-        if (pesapi_is_object(env, value))
+        if (env.apis->is_object(env.env, value))
         {
-            return Converter<T*>::toCpp(env, pesapi_unboxing(env, value));
+            return Converter<T*>::toCpp(env, env.apis->unboxing(env.env, value));
         }
         return nullptr;
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_boxed_value(env, value);    // do not checked inner
+        return env.apis->is_boxed_value(env.env, value);    // do not checked inner
     }
 };
 
@@ -527,34 +556,34 @@ struct Converter<T,
     typename std::enable_if<is_script_type<typename std::remove_pointer<T>::type>::value && !std::is_array<T>::value &&
                             !std::is_const<typename std::remove_pointer<T>::type>::value && std::is_pointer<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, T value)
+    static pesapi_value toScript(PApiCallbackEnv env, T value)
     {
-        return pesapi_create_binary(env, value, 0);
+        return env.apis->create_binary(env.env, value, 0);
     }
 
-    static T toCpp(pesapi_env env, pesapi_value value)
+    static T toCpp(PApiCallbackEnv env, pesapi_value value)
     {
         size_t bufsize;
-        return static_cast<T>(pesapi_get_value_binary(env, value, &bufsize));
+        return static_cast<T>(env.apis->get_value_binary(env.env, value, &bufsize));
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_binary(env, value);
+        return env.apis->is_binary(env.env, value);
     }
 };
 
 template <typename T, std::size_t Size>
 struct Converter<T[Size], typename std::enable_if<is_script_type<T>::value && !std::is_const<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, T value[Size])
+    static pesapi_value toScript(PApiCallbackEnv env, T value[Size])
     {
-        return pesapi_create_binary(env, value, sizeof(T) * Size);
+        return env.apis->create_binary(env.env, value, sizeof(T) * Size);
     }
 
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_binary(env, value);
+        return env.apis->is_binary(env.env, value);
     }
 };
 
@@ -562,18 +591,18 @@ template <class T>
 struct Converter<T, typename std::enable_if<std::is_copy_constructible<T>::value && std::is_constructible<T>::value &&
                                             is_objecttype<T>::value && !is_uetype<T>::value>::type>
 {
-    static pesapi_value toScript(pesapi_env env, T value)
+    static pesapi_value toScript(PApiCallbackEnv env, T value)
     {
-        return pesapi_native_object_to_value(env, DynamicTypeId<T>::get(&value), new T(value), true);
+        return env.apis->native_object_to_value(env.env, DynamicTypeId<T>::get(&value), new T(value), true);
     }
-    static T toCpp(pesapi_env env, pesapi_value value)
+    static T toCpp(PApiCallbackEnv env, pesapi_value value)
     {
-        T* ptr = (static_cast<T*>(pesapi_get_native_object_ptr(env, value)));
+        T* ptr = (static_cast<T*>(env.apis->get_native_object_ptr(env.env, value)));
         return ptr ? *ptr : T{};
     }
-    static bool accept(pesapi_env env, pesapi_value value)
+    static bool accept(PApiCallbackEnv env, pesapi_value value)
     {
-        return pesapi_is_instance_of(env, StaticTypeId<T>::get(), value);
+        return env.apis->is_instance_of(env.env, StaticTypeId<T>::get(), value);
     }
 };
 
