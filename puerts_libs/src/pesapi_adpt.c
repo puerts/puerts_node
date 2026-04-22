@@ -10,8 +10,6 @@
 
 #include "pesapi.h"
 
-#define PUERTS_SHARED
-
 EXTERN_C_START
 
 #ifdef PUERTS_SHARED
