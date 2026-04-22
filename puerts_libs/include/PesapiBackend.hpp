@@ -77,8 +77,13 @@ struct API
     typedef pesapi_callback_info CallbackInfoType;
     typedef PApiCallbackEnv ContextType;
     typedef pesapi_value ValueType;
-    typedef void (*FunctionCallbackType)(struct pesapi_ffi* apis, pesapi_callback_info info);
-    typedef void* (*InitializeFuncType)(struct pesapi_ffi* apis, pesapi_callback_info Info);
+    // The opaque API-table pointer type passed as the first parameter of every callback.
+    // StaticCall.hpp / ScriptBackend.hpp should only reference this alias, never the raw
+    // `struct pesapi_ffi*` type, so that the V8 (or any other) backend can define its own
+    // ApisType (even `void*` if unused) without dragging pesapi symbols into shared code.
+    typedef struct pesapi_ffi* ApisType;
+    typedef void (*FunctionCallbackType)(ApisType apis, pesapi_callback_info info);
+    typedef void* (*InitializeFuncType)(ApisType apis, pesapi_callback_info Info);
     struct GeneralFunctionInfo
     {
         const char* Name;
@@ -108,7 +113,7 @@ struct API
         return env.apis->get_arg(info, index);
     }
 
-    inline static PApiCallbackEnv GetContext(struct pesapi_ffi* apis, pesapi_callback_info info)
+    inline static PApiCallbackEnv GetContext(ApisType apis, pesapi_callback_info info)
     {
         return PApiCallbackEnv{apis, apis->get_env(info)};
     }

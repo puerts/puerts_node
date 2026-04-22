@@ -37,7 +37,7 @@
 #define MakeVariable(M) MakeProperty(M)
 #define MakeReadonlyVariable(M) MakeReadonlyProperty(M)
 #define MakeFunction(M, ...)                                                                                                    \
-    [](struct pesapi_ffi* apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                            \
+    [](::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::ApisType apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                            \
     {                                                                                                                           \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, decltype(M), M>::callWithDefaultValues( \
             apis, info, ##__VA_ARGS__);                                                                                         \
@@ -45,7 +45,7 @@
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, decltype(M), M>::info(                  \
             PUERTS_NAMESPACE::Count(__VA_ARGS__))
 #define MakeExtension(M, ...)                                                                                           \
-    [](struct pesapi_ffi* apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                    \
+    [](::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::ApisType apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                    \
     {                                                                                                                   \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, decltype(M),                    \
             M>::callExtensionWithDefaultValues(apis, info, ##__VA_ARGS__);                                              \
@@ -53,7 +53,7 @@
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, decltype(M), M>::extensionInfo( \
             PUERTS_NAMESPACE::Count(__VA_ARGS__))
 #define SelectFunction(SIGNATURE, M, ...)                                                                                     \
-    [](struct pesapi_ffi* apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                          \
+    [](::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::ApisType apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)                          \
     {                                                                                                                         \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, SIGNATURE, M>::callWithDefaultValues( \
             apis, info, ##__VA_ARGS__);                                                                                       \
@@ -61,7 +61,7 @@
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, SIGNATURE, M>::info(                  \
             PUERTS_NAMESPACE::Count(__VA_ARGS__))
 #define SelectFunction_PtrRet(SIGNATURE, M, ...)                                                                   \
-    [](struct pesapi_ffi* apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)               \
+    [](::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::ApisType apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)               \
     {                                                                                                              \
         ::PUERTS_NAMESPACE::FuncCallWrapper<PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API, SIGNATURE, M,              \
             true>::callWithDefaultValues(apis, info, ##__VA_ARGS__);                                               \
@@ -91,7 +91,7 @@
     template <>                                                                                                                       \
     struct Name##PuertsOverloads<SIGNATURE>                                                                                           \
     {                                                                                                                                 \
-        static bool overloadCall(struct pesapi_ffi* apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)        \
+        static bool overloadCall(::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::ApisType apis, ::PUERTS_NAMESPACE::PUERTS_BINDING_IMPL::API::CallbackInfoType info)        \
         {                                                                                                                             \
             return ::PUERTS_NAMESPACE::FuncCallWrapper<SIGNATURE, M, true>::overloadCallWithDefaultValues(apis, info, ##__VA_ARGS__); \
         }                                                                                                                             \
